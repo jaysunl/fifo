@@ -1,4 +1,4 @@
-module fifo_tb;
+module tb_parameterized_fifo;
     // Parameters
     parameter DATA_WIDTH = 8;
     parameter DEPTH = 16;
@@ -20,7 +20,7 @@ module fifo_tb;
     end
   
     // DUT instantiation
-    fifo_top #(
+    parameterized_fifo #(
         .DATA_WIDTH(DATA_WIDTH),
         .ADDR_WIDTH($clog2(DEPTH)),
         .DEPTH(DEPTH),
@@ -61,32 +61,9 @@ module fifo_tb;
         .rd_addr(dut.rd_addr)
     );
   
-    // Random stimulus generation
-    logic [$clog2(NUM_READ_PORTS)-1:0] rd_en;
-    logic [$clog2(NUM_WRITE_PORTS)-1:0] wr_en;
-    logic [DEPTH-1:0] wr_full;
-    logic [DATA_WIDTH-1:0] wr_data;
-    logic [$clog2(NUM_READ_PORTS)-1:0] rd_empty;
-    logic [DATA_WIDTH-1:0] rd_data;
-  
-    // Functional coverage
-    covergroup functional_coverage @(posedge clk);
-        option.per_instance = 1;
-    
-        // Functional coverage points
-        bins read_write_seq = (rd_en && wr_en) -> (rd_data == wr_data);
-        bins almost_full = (wr_full && !rd_en);
-        bins almost_empty = (rd_empty && !wr_en);
-        bins read_data_pattern[] = {[DATA_WIDTH-1:0] data} with (rd_en && (data == rd_data));
-        bins write_data_pattern[] = {[DATA_WIDTH-1:0] data} with (wr_en && (data == wr_data));
-        bins num_read_ports_active = [$:0:NUM_READ_PORTS];
-        bins num_write_ports_active = [$:0:NUM_WRITE_PORTS];
-        bins read_write_port_combinations = {wr_en, rd_en};
-  
-    endgroup
-  
-    // Initialize variables and signals
+    // Random stimulus generation with constraints
     initial begin
+        // Initialize variables and signals
         wr_en = 0;
         rd_en = 0;
         wr_full = 0;
@@ -94,15 +71,44 @@ module fifo_tb;
         rd_empty = 1;
         rd_data = 0;
     
-        // Start random stimulus generation loop
-        repeat (100) begin
-            // Randomize write and read operations
-            wr_en = $random;
-            rd_en = $random;
+        // Functional coverage
+        covergroup functional_coverage @(posedge clk);
+            option.per_instance = 1;
     
-            // Drive signals with random data
+            // Functional coverage points
+            bins read_write_seq = (rd_en && wr_en) -> (rd_data == wr_data);
+            bins almost_full = (wr_full && !rd_en);
+            bins almost_empty = (rd_empty && !wr_en);
+            bins read_data_pattern[] = {[DATA_WIDTH-1:0] data} with (rd_en && (data == rd_data));
+            bins write_data_pattern[] = {[DATA_WIDTH-1:0] data} with (wr_en && (data == wr_data));
+            bins num_read_ports_active = [$:0:NUM_READ_PORTS];
+            bins num_write_ports_active = [$:0:NUM_WRITE_PORTS];
+            bins read_write_port_combinations = {wr_en, rd_en};
+    
+        endgroup
+    
+        // Start constrained random stimulus generation loop
+        repeat (100) begin
+            // Constrained randomization for write data
             if (wr_en) begin
-                wr_data = $random;
+                wr_data = $urandom_range(0, 255); // Constrain data values between 0 and 255
+            end
+    
+            // Constrained randomization for addresses
+            wr_addr = $urandom_range(0, DEPTH - 1); // Constrain write address within FIFO depth
+            rd_addr = $urandom_range(0, DEPTH - 1); // Constrain read address within FIFO depth
+    
+            // Constrained randomization for port activity (adjust probabilities based on design behavior)
+            if ($urandom < 0.8) begin // 80% chance of write port activation
+                wr_en = 1;
+            end else begin
+                wr_en = 0;
+            end
+    
+            if ($urandom < 0.6) begin // 60% chance of read port activation
+                rd_en = 1;
+            end else begin
+                rd_en = 0;
             end
     
             // Monitor coverage and checkers
