@@ -1,6 +1,6 @@
 // Coverage monitor for FIFO read operations
 module read_coverage_monitor;
-    parameter DEPTH = 16; // Adjust this based on your FIFO depth
+    parameter DEPTH = 16; // Adjust this based on FIFO depth
     
     // Input signals
     input logic clk;
