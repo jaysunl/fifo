@@ -1,3 +1,3 @@
 # fifo
 
-TODO: Put the verification results
+A multi-port FIFO that uses FPGA BRAM
